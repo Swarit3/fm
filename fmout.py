@@ -8,9 +8,6 @@ if os.name == 'posix':
 	os.system('clear')
 elif os.name == 'nt':
 	os.system('cls')
-elif os.name == 'java':
-	os.system('''echo "Don't"''')
-	exit()
 
 #Define variables for screen and bottom text because of my incompetence to figure out how to work on a local variable across functions.
 scrnY, scrnX = 0, 0
@@ -71,7 +68,7 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 				if tc > 50:
 					os.system('cd ~')
 				bottomtxt = "Working directory inaccessible. Moved to " + os.getcwd()
-			stdscr.addstr(scrnY-2, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*((scrnX-len(bottomtxt))//2), curses.color_pair(7))
+		stdscr.addstr(scrnY-2, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*((scrnX-len(bottomtxt))//2), curses.color_pair(7))
 
 	else:
 		stdscr.addstr(0, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*((scrnX-len(bottomtxt))//2), curses.color_pair(7))
@@ -112,11 +109,12 @@ def lblinp(stdscr, posY, posX, txt, ran = range(32, 127), cset = 7, rlist = True
 
 
 
-def popup(sizY, sizX, opts, title=''):
+def popup(opts=list(), title=''):
 	global scrnY, scrnX, bottomtxt
-	popscr = curses.newwin(sizY, sizX, ceil((scrnY-sizY)/2), ceil((scrnX-sizX)/2))
+	popscr = curses.newwin(len(opts)+1, len(title)+4, ceil((scrnY-len(opts)+1)/2), ceil(scrnX/2))
 	selnum = 0
 	scrollpos = 0
+	bottomtxt = title
 	perline(popscr, opts, selnum, scrollpos)
 	while True:
 		kinp = popscr.getch()
@@ -132,7 +130,6 @@ def popup(sizY, sizX, opts, title=''):
 			break
 		if kinp != -1:
 			sizY, sizX = popscr.getmaxyx()
-			bottomtxt = title
 			perline(popscr, opts, selnum, scrollpos)
 		curses.napms(16)
 	return selnum
@@ -173,7 +170,7 @@ def main(stdscr):
 
 		#Key input system; To-do: Move this to a seperate function.
 		kinp = stdscr.getch()
-		if kinp == ord('q') and popup(scrnY//2, scrnX//2, ['No', 'Yes'], "Are you sure you want to quit?"):
+		if kinp == ord('q') and popup(['No', 'Yes'], "Are you sure you want to quit?"):
 			break
 
 		if kinp == ord('j') and selnum > 0:
@@ -197,9 +194,9 @@ def main(stdscr):
 				try:
 					#The following used to be the most CPU intensive line once. Then I learnt about inline conditions.
 					selnum = sorted(os.listdir('..')).index(os.path.basename(os.getcwd()))
-					scrollpos = max(0, min(selnum, len(cdir) - (scrnY - 3))) if len(os.listdir('..'))-2 > scrnY-4 else 0 #Don't scroll if parent directory has more items than screen height, otherwise keep current directory at top
+					scrollpos = abs(scrnY - selnum)+6 if selnum+2 > scrnY else 0 #Adjust scroll position based on selector position and screen size
 				except ValueError:
-					bottomtxt = "Cannot above " + os.getcwd()
+					bottomtxt = "Cannot go beyond " + os.getcwd()
 				os.chdir('..')
 		except (PermissionError, FileNotFoundError):
 			bottomtxt = "Permission Denied!"
@@ -214,9 +211,12 @@ def main(stdscr):
 		if kinp == ord('z'):
 			pass
 
+		if kinp == ord(' '):
+			opt = popup()
 
+
+		#Store items from current directory in a list and render them line-by-line.
 		try:
-			#Store items from current directory in a list and render them line-by-line.
 			cdir = sorted(os.listdir('.'))
 			if cdir == []:
 				bottomtxt = "Directory Empty"
@@ -251,4 +251,5 @@ exit()
 
 '''To do:
 Move input logic to its own function. Update: No. Not doing that. Modularity will fuck up adaptability.
-Add more controls (force refresh 'r'), (force 60Frame cycle 'R'), (move to end 'N'), (move to beginning 'J')'''
+Add more controls (force refresh 'r'), (force 60Frame cycle 'R'), (move to end 'N'), (move to beginning 'J')
+Fix popup (position and dimentions)'''
