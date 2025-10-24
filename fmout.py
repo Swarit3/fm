@@ -50,7 +50,7 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 		else:
 			bc = 0
 
-		if i+1-sp > 0 and i-sp < scrnY-3:
+		if (dirs == True and i+1-sp > 0 and i-sp < scrnY-3) or (dirs == False and i+1-sp > 0 and i-sp < scrnY-2):
 			stdscr.addstr(i + 1 - sp, 0, '    '  + x[i][0:((scrnX - 7) if len(x[i]) > scrnX else len(x[i]))] + ('...' if len(x[i]) > scrnX else '') + ' '*ceil((scrnX-len(x[i]))-4), curses.color_pair(tc+bc))
 
 	if dirs == True:
@@ -111,7 +111,7 @@ def lblinp(stdscr, posY, posX, txt, ran = range(32, 127), cset = 7, rlist = True
 
 def popup(opts=list(), title=''):
 	global scrnY, scrnX, bottomtxt
-	popscr = curses.newwin(len(opts)+1, len(title)+4, ceil((scrnY-len(opts)+1)/2), ceil(scrnX/2))
+	popscr = curses.newwin(len(opts)+2, len(title)+2, ceil(scrnY-len(opts))//2, ceil(scrnX-len(title))//2)
 	selnum = 0
 	scrollpos = 0
 	bottomtxt = title
@@ -132,6 +132,7 @@ def popup(opts=list(), title=''):
 			sizY, sizX = popscr.getmaxyx()
 			perline(popscr, opts, selnum, scrollpos)
 		curses.napms(16)
+	bottomtxt = str()
 	return selnum
 
 
@@ -212,7 +213,9 @@ def main(stdscr):
 			pass
 
 		if kinp == ord(' '):
-			opt = popup()
+			opt = popup(['Rename', 'Delete'], "File Operations")
+			if opt == '0':
+				lblinp(stdscr, )
 
 
 		#Store items from current directory in a list and render them line-by-line.
@@ -232,18 +235,20 @@ def main(stdscr):
 			if f_ref != 0:
 				f_ref -= 1
 			bottomtxt = ""
-		curses.napms(16) #'wait for _' block in milliseconds
+		curses.napms(16) #'wait for _' in milliseconds
 
 
 
 #Actual execution ahead:
-
-curses.wrapper(main)
-
-if os.name == 'posix':
-	os.system('clear')
-elif os.name == 'nt':
-	os.system('cls')
+try:
+	curses.wrapper(main)
+except KeyboardInterrupt:
+	print("Ctrl+C pressed. Goodbye!")
+finally:
+	if os.name == 'posix':
+		os.system('clear')
+	elif os.name == 'nt':
+		os.system('cls')
 
 exit()
 
@@ -252,4 +257,4 @@ exit()
 '''To do:
 Move input logic to its own function. Update: No. Not doing that. Modularity will fuck up adaptability.
 Add more controls (force refresh 'r'), (force 60Frame cycle 'R'), (move to end 'N'), (move to beginning 'J')
-Fix popup (position and dimentions)'''
+Fix: lplinp (its a mess. make it more rigid but easier to use)'''
