@@ -1,5 +1,8 @@
 
 Log:
+
+Fixed of popup menu items not showing up.
+
 Fixed flickering: move the fucking renderer to only execute when key input detected.
 Changed color scheme. Previous one looked like high contrast vomit.
 Added a forced refresh system.
