@@ -56,7 +56,9 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 	if dirs == True:
 		try:
 			stdscr.addstr(0, 0, ('...' if len(os.getcwd()) > scrnX else '') + os.getcwd()[len(os.getcwd()) - scrnX + 3 if len(os.getcwd()) > scrnX else 0:] + ' '*(scrnX-len(os.getcwd())), curses.color_pair(7))
-		except FileNotFoundError:
+		except FileNotFoundError: 
+			#Hereonout, tc and bc are reused as... something. idk i forgor :skullemoji: lol 
+			#oh wait, it's parent directories. and grandparent directories.
 			tc, bc = 0, '..'
 			while True:
 				try:
@@ -85,7 +87,7 @@ def lblinp(stdscr, posY, posX, txt, ran = range(32, 127), cset = 7, rlist = True
 		scrnY, scrnX = stdscr.getmaxyx()
 		kinp = stdscr.getch()
 
-		if kinp in [curses.KEY_ENTER, 10, 343]:
+		if kinp in [curses.KEY_ENTER, 10, 13, 343]:
 			break
 
 		elif kinp in [curses.KEY_BACKSPACE, 127, 8] and len(out) > 0:
@@ -118,17 +120,21 @@ def popup(opts=list(), title=''):
 	perline(popscr, opts, selnum, scrollpos)
 	while True:
 		kinp = popscr.getch()
-		if kinp == ord('j') and selnum > 0:
+		bottomtxt=str(kinp)
+		if kinp in [curses.KEY_UP, 65] and selnum > 0:
 			if selnum == scrollpos:
 				scrollpos -= 1
 			selnum -= 1
-		if kinp == ord('n') and selnum < len(opts)-1:
+		elif kinp in [curses.KEY_DOWN, 66] and selnum < len(opts)-1:
 			if selnum == scrnY-4+scrollpos: #Don't ask why -4
 				scrollpos += 1
 			selnum += 1
-		if kinp == ord('f'):
+		elif kinp in [curses.KEY_ENTER, 10, 13, 343]:
 			break
-		if kinp != -1:
+		elif kinp in [curses.KEY_BACKSPACE, 8, 127]:
+		    selnum = 0
+		    break
+		elif kinp != -1:
 			sizY, sizX = popscr.getmaxyx()
 			perline(popscr, opts, selnum, scrollpos)
 		curses.napms(16)
@@ -147,6 +153,7 @@ def main(stdscr):
 	curses.cbreak()
 	curses.start_color()
 	stdscr.keypad(True)
+	curses.use_default_colors()
 	global scrnY, scrnX, bottomtxt
 
 	#Set variables
@@ -156,13 +163,13 @@ def main(stdscr):
 	f_ref = 1
 
 	#Define color pairs
-	curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+	curses.init_pair(1, curses.COLOR_GREEN, -1)
 	curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_WHITE)
-	curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
+	curses.init_pair(3, curses.COLOR_BLUE, -1)
 	curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_WHITE)
 	curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
 	curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_CYAN)
-	curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK)
+	curses.init_pair(5, curses.COLOR_RED, -1)
 	curses.init_pair(6, curses.COLOR_RED, curses.COLOR_WHITE)
 
 
@@ -174,24 +181,24 @@ def main(stdscr):
 		if kinp == ord('q') and popup(['No', 'Yes'], "Are you sure you want to quit?"):
 			break
 
-		if kinp == ord('j') and selnum > 0:
+		if kinp == curses.KEY_UP and selnum > 0:
 			if selnum == scrollpos:
 				scrollpos -= 1
 			selnum -= 1
 
-		if kinp == ord('n') and selnum < len(cdir)-1:
+		if kinp == curses.KEY_DOWN and selnum < len(cdir)-1:
 			if selnum == scrnY-4+scrollpos: #Don't ask why -4
 				scrollpos += 1
 			selnum += 1
 
 		try:
 		#Wrap navigating Directories in 'try' because you may not be allowed in some places. More likely on Posix based systems.
-			if kinp == ord('f') and selnum <= len(cdir) and os.path.isdir(cdir[selnum]):
+			if kinp in [curses.KEY_ENTER, 10, 13, 343] and selnum <= len(cdir) and os.path.isdir(cdir[selnum]):
 				os.chdir(cdir[selnum])
 				scrollpos = 0
 				selnum = 0
 
-			elif kinp == ord('d') and os.path.exists(".."):
+			elif kinp in [curses.KEY_BACKSPACE, 127, 8] and os.path.exists(".."):
 				try:
 					#The following used to be the most CPU intensive line once. Then I learnt about inline conditions.
 					selnum = sorted(os.listdir('..')).index(os.path.basename(os.getcwd()))
@@ -206,11 +213,11 @@ def main(stdscr):
 			pass
 
 
-		if kinp == ord('p'):
+		if kinp == ord('t'):
 			os.system(lblinp(stdscr, scrnY-2, 0, "$:"))
 		
-		if kinp == ord('z'):
-			pass
+		if kinp == ord('~'):
+			os.chdir(os.path.expanduser('~'))
 
 		if kinp == ord(' '):
 			opt = popup(['Rename', 'Delete'], "File Operations")
@@ -243,12 +250,13 @@ def main(stdscr):
 try:
 	curses.wrapper(main)
 except KeyboardInterrupt:
-	print("Ctrl+C pressed. Goodbye!")
+	print("Ctrl+C pressed.")
 finally:
 	if os.name == 'posix':
 		os.system('clear')
 	elif os.name == 'nt':
 		os.system('cls')
+	print("Goodbye!")
 
 exit()
 

@@ -35,3 +35,5 @@ Implemented Exit confirmation.
 Redesigned perline scrnSIZE logic to be dynamic.
 Added exception if user tries to navigate up and parent directory does not contain root directory.
 Added clear screen for NT systems.
+
+Transparent BG support.
