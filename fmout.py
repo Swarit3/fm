@@ -120,7 +120,7 @@ def popup(opts=list(), title=''):
 	perline(popscr, opts, selnum, scrollpos)
 	while True:
 		kinp = popscr.getch()
-		bottomtxt=str(kinp)
+		#bottomtxt=str(kinp)
 		if kinp in [curses.KEY_UP, 65] and selnum > 0:
 			if selnum == scrollpos:
 				scrollpos -= 1
