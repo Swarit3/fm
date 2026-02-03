@@ -102,8 +102,9 @@ def popup(opts: list, title=''):
 	selnum = 0
 	scrollpos = 0
 	bottomtxt = title
-	perline(popscr, opts, selnum, scrollpos)
 	while True:
+		sizY, sizX = popscr.getmaxyx()
+		perline(popscr, opts, selnum, scrollpos)
 		kinp = popscr.getch()
 		if kinp == curses.KEY_UP and selnum > 0:
 			if selnum == scrollpos:
@@ -118,10 +119,6 @@ def popup(opts: list, title=''):
 		elif kinp in [curses.KEY_BACKSPACE, 8, 127]:
 		    selnum = 0
 		    break
-		if kinp != -1:
-			sizY, sizX = popscr.getmaxyx()
-			perline(popscr, opts, selnum, scrollpos)
-		curses.napms(16)
 	bottomtxt = str()
 	return selnum
 
@@ -148,7 +145,6 @@ def main(stdscr):
 #Main program because curses is a bitch!
 	#Init curses and import screen variables
 	curses.curs_set(0)			#Hide Cursor
-	stdscr.nodelay(True)
 	curses.noecho()
 	curses.cbreak()
 	curses.start_color()		#enable color support
@@ -176,8 +172,38 @@ def main(stdscr):
 	while True:
 	#Core loop
 
+		#Store items from current directory in a list and render them line-by-line.
+		try:
+			cdir = sorted(os.listdir(os.getcwd()))
+			if cdir == []:
+				bottomtxt = "Directory Empty"
+			if selnum >= len(cdir):
+				selnum = len(cdir) - 1
+				bottomtxt = "hidden refresh"
+				
+		except FileNotFoundError: 
+			while True:
+				try:
+					os.chdir("..")
+					if os.path.exists(os.getcwd()):
+						break
+				except FileNotFoundError:
+					continue
+			bottomtxt = "Working directory inaccessible. Moved to {}".format(os.getcwd())
+			continue
+
+		#Draw.
+		bottomtxt = '' if bottomtxt == "hidden refresh" else bottomtxt
+		stdscr.move(0, 0)
+		scrnY, scrnX = stdscr.getmaxyx()
+		perline(stdscr, cdir, selnum, scrollpos, subwin = False)
+		bottomtxt = ""
+
+
 		#Key input system; To-do: Move this to a seperate function.
 		kinp = stdscr.getch()
+
+
 		if kinp == ord('q') and popup(['No', 'Yes'], "Are you sure you want to quit?"):
 			break
 
@@ -237,39 +263,8 @@ def main(stdscr):
 					operation.remove(cdir[selnum])
 
 
-
 		#Debug loggr. for use with watch
 		#open("/home/s/Documents/fm/log.txt", "w").write("scrnSIZE:"+ str(scrnY)+ str(scrnX)+ "\nselnum:"+ str(selnum)+ "\ncdir:"+ str(cdir)+ "\ncdir len:"+ str(len(cdir))+ "\nscrollpos:"+ str(scrollpos)+ "\nbottomtxt:"+ bottomtxt)
-
-
-		if kinp != -1 or bottomtxt in ["Working directory inaccessible. Moved to {}".format(os.getcwd()), "Welcome", "hidden refresh"]:
-			#Store items from current directory in a list and render them line-by-line.
-			try:
-				cdir = sorted(os.listdir(os.getcwd()))
-				if cdir == []:
-					bottomtxt = "Directory Empty"
-				if selnum >= len(cdir):
-					selnum = len(cdir) - 1
-					bottomtxt = "hidden refresh"
-					
-			except FileNotFoundError: 
-				while True:
-					try:
-						os.chdir("..")
-						if os.path.exists(os.getcwd()):
-							break
-					except FileNotFoundError:
-						continue
-				bottomtxt = "Working directory inaccessible. Moved to {}".format(os.getcwd())
-				continue
-
-			#Draw.
-			bottomtxt = '' if bottomtxt == "hidden refresh" else bottomtxt
-			stdscr.move(0, 0)
-			scrnY, scrnX = stdscr.getmaxyx()
-			perline(stdscr, cdir, selnum, scrollpos, subwin = False)
-			bottomtxt = ""
-		curses.napms(16) #'wait for _' in milliseconds
 
 
 

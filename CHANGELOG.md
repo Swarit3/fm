@@ -57,3 +57,5 @@ Improved comments; Removed unneeded profanity, old comments.
 Added helper script testkeys.py to test keycodes.
 Added helper script strip.py to compress file by removing comments and empty lines.
 Moved LOG.md to CHANGELOG.md.
+
+Improved input logic to be non blocking, significantly reducing CPU usage
