@@ -3,17 +3,14 @@ import os
 import curses
 from math import ceil
 
-#Clear whatever mess there may be
-if os.name == 'posix':
-	os.system('clear')
-elif os.name == 'nt':
-	os.system('cls')
 
-#Define variables for screen and bottom text because of my incompetence to figure out how to work on a local variable across functions.
+#Define variables for screen and bottom text because of my incompetence to figure out how to work on a local variable across functions. Turns out, you can't.
 scrnY, scrnX = 0, 0
 bottomtxt = "Welcome"
 
-def perline(stdscr, x, selnum, sp, dirs= False):
+
+
+def perline(stdscr, x: list, selnum: int, sp: int, subwin=True):
 #Was supposed to be a simple function to print out list items linewise; now is the render function
 
 	global bottomtxt
@@ -22,10 +19,10 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 	stdscr.clear()
 
 	for i in range(0,len(x)):
-		if dirs == True:
-			if os.path.isdir(x[i]) == True:
+		if subwin == False:
+			if os.path.isdir(x[i]):
 				tc = 1
-			elif os.path.isfile(x[i]) == True:
+			elif os.path.isfile(x[i]):
 				tc = 3
 			else:
 				tc = 5
@@ -35,12 +32,12 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 		if selnum == i:
 			bc = 1
 			if bottomtxt == "":
-				if os.path.isdir(x[selnum]) == True:
+				if os.path.isdir(x[selnum]):
 					try:
 						bottomtxt = str(len(os.listdir(x[selnum]))) + " Items"
 					except:
 						bottomtxt = "Directory"
-				elif os.path.isfile(x[selnum]) == True:
+				elif os.path.isfile(x[selnum]):
 					try:
 						bottomtxt = str(os.path.getsize(x[i])/1048576)[0:4] + "MB"
 					except:
@@ -50,42 +47,31 @@ def perline(stdscr, x, selnum, sp, dirs= False):
 		else:
 			bc = 0
 
-		if (dirs == True and i+1-sp > 0 and i-sp < scrnY-3) or (dirs == False and i+1-sp > 0 and i-sp < scrnY-2):
-			stdscr.addstr(i + 1 - sp, 0, '    '  + x[i][0:((scrnX - 7) if len(x[i]) > scrnX else len(x[i]))] + ('...' if len(x[i]) > scrnX else '') + ' '*ceil((scrnX-len(x[i]))-4), curses.color_pair(tc+bc))
+		if (subwin == False and i+1-sp > 0 and i-sp < scrnY-3) or (subwin == True and i+1-sp > 0 and i-sp < scrnY-2):
+			stdscr.addstr(i + 1 - sp + subwin, 0, '    '  + x[i][0:((scrnX - 7) if len(x[i]) > scrnX else len(x[i]))] + ('...' if len(x[i]) > scrnX else '') + ' '*ceil((scrnX-len(x[i]))-4), curses.color_pair(tc+bc))
 
-	if dirs == True:
-		try:
-			stdscr.addstr(0, 0, ('...' if len(os.getcwd()) > scrnX else '') + os.getcwd()[len(os.getcwd()) - scrnX + 3 if len(os.getcwd()) > scrnX else 0:] + ' '*(scrnX-len(os.getcwd())), curses.color_pair(7))
-		except FileNotFoundError: 
-			#Hereonout, tc and bc are reused as... something. idk i forgor :skullemoji: lol 
-			#oh wait, it's parent directories. and grandparent directories.
-			tc, bc = 0, '..'
-			while True:
-				try:
-					bc += "/.."*tc
-					os.chdir(bc)
-					break
-				except FileNotFoundError:
-					tc += 1
-				if tc > 50:
-					os.system('cd ~')
-				bottomtxt = "Working directory inaccessible. Moved to " + os.getcwd()
+	if subwin == False:
+		stdscr.addstr(0, 0, ('...' if len(os.getcwd()) > scrnX else '') + os.getcwd()[len(os.getcwd()) - scrnX + 3 if len(os.getcwd()) > scrnX else 0:] + ' '*(scrnX-len(os.getcwd())), curses.color_pair(7))
 		stdscr.addstr(scrnY-2, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*((scrnX-len(bottomtxt))//2), curses.color_pair(7))
 
 	else:
-		stdscr.addstr(0, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*((scrnX-len(bottomtxt))//2), curses.color_pair(7))
+		stdscr.addstr(1, 0, ' '*ceil((scrnX-len(bottomtxt))/2) + bottomtxt + ' '*(((scrnX-len(bottomtxt))//2)-1), curses.color_pair(7))
+		stdscr.border()
 		stdscr.refresh()
 
 
 
-def lblinp(stdscr, posY, posX, txt, ran = range(32, 127), cset = 7, rlist = True):
-	global scrnY, scrnX
+def lblinp(txt, ran = range(32, 127)):
+	global scrnY, scrnX, bottomtxt
+	popscr = curses.newwin(4, scrnX-2, ceil(scrnY-4)//2, ceil(scrnX//2))
+	popscr.keypad(True)
+	selnum = 0
+	scrollpos = 0
+	bottomtxt = txt
 	out = str()
-	stdscr.addstr(posY, posX, txt + ' '*(scrnX-len(txt)), curses.color_pair(cset))
-
 	while True:
-		scrnY, scrnX = stdscr.getmaxyx()
-		kinp = stdscr.getch()
+		scrnY, scrnX = popscr.getmaxyx()
+		kinp = popscr.getch()
 
 		if kinp in [curses.KEY_ENTER, 10, 13, 343]:
 			break
@@ -100,32 +86,30 @@ def lblinp(stdscr, posY, posX, txt, ran = range(32, 127), cset = 7, rlist = True
 				pass
 
 		if kinp != -1:
-			stdscr.clear()
-			if rlist == True:
-				perline(stdscr, sorted(os.listdir('.')), -1, 0, dirs = True)
-			stdscr.addstr(posY, posX, txt + out + '_' + ' '*(scrnX-len(txt+out)-1) , curses.color_pair(cset))
-			stdscr.refresh()
+			popscr.clear()
+			perline(popscr, str(txt) + out, selnum, scrollpos)
+			popscr.refresh()
 		curses.napms(16)
 
 	return out
 
 
 
-def popup(opts=list(), title=''):
+def popup(opts: list, title=''):
 	global scrnY, scrnX, bottomtxt
-	popscr = curses.newwin(len(opts)+2, len(title)+2, ceil(scrnY-len(opts))//2, ceil(scrnX-len(title))//2)
+	popscr = curses.newwin(min(len(opts)+3, scrnX), min(len(title)+4, scrnY), ceil(scrnY-len(opts))//2, ceil(scrnX-len(title))//2)
+	popscr.keypad(True)
 	selnum = 0
 	scrollpos = 0
 	bottomtxt = title
 	perline(popscr, opts, selnum, scrollpos)
 	while True:
 		kinp = popscr.getch()
-		#bottomtxt=str(kinp)
-		if kinp in [curses.KEY_UP, 65] and selnum > 0:
+		if kinp == curses.KEY_UP and selnum > 0:
 			if selnum == scrollpos:
 				scrollpos -= 1
 			selnum -= 1
-		elif kinp in [curses.KEY_DOWN, 66] and selnum < len(opts)-1:
+		elif kinp == curses.KEY_DOWN and selnum < len(opts)-1:
 			if selnum == scrnY-4+scrollpos: #Don't ask why -4
 				scrollpos += 1
 			selnum += 1
@@ -134,7 +118,7 @@ def popup(opts=list(), title=''):
 		elif kinp in [curses.KEY_BACKSPACE, 8, 127]:
 		    selnum = 0
 		    break
-		elif kinp != -1:
+		if kinp != -1:
 			sizY, sizX = popscr.getmaxyx()
 			perline(popscr, opts, selnum, scrollpos)
 		curses.napms(16)
@@ -143,24 +127,40 @@ def popup(opts=list(), title=''):
 
 
 
+class operation:
+
+	def remove(obj):
+		if not os.path.exists(obj):
+			return
+
+		if os.path.isdir(obj):
+			if os.listdir(obj) != []:
+				for subobj in os.listdir(obj):
+					operation.remove(os.path.join(obj,subobj))
+			os.rmdir(obj)
+		elif os.path.isfile(obj):
+			os.remove(obj)
+
+
+
 
 def main(stdscr):
 #Main program because curses is a bitch!
 	#Init curses and import screen variables
-	curses.curs_set(0)
+	curses.curs_set(0)			#Hide Cursor
 	stdscr.nodelay(True)
 	curses.noecho()
 	curses.cbreak()
-	curses.start_color()
+	curses.start_color()		#enable color support
 	stdscr.keypad(True)
-	curses.use_default_colors()
+	curses.use_default_colors()	#use default terminal colors. allows transparency
 	global scrnY, scrnX, bottomtxt
 
 	#Set variables
 	scrollpos = 0
 	selnum = 0
 	scrnY, scrnX = stdscr.getmaxyx()
-	f_ref = 1
+	#cdir = sorted(os.listdir(os.getcwd()))
 
 	#Define color pairs
 	curses.init_pair(1, curses.COLOR_GREEN, -1)
@@ -181,15 +181,23 @@ def main(stdscr):
 		if kinp == ord('q') and popup(['No', 'Yes'], "Are you sure you want to quit?"):
 			break
 
-		if kinp == curses.KEY_UP and selnum > 0:
+		elif kinp == curses.KEY_UP and selnum > 0:
 			if selnum == scrollpos:
 				scrollpos -= 1
 			selnum -= 1
 
-		if kinp == curses.KEY_DOWN and selnum < len(cdir)-1:
+		elif kinp == curses.KEY_DOWN and selnum < len(cdir)-1:
 			if selnum == scrnY-4+scrollpos: #Don't ask why -4
 				scrollpos += 1
 			selnum += 1
+
+		elif kinp == curses.KEY_HOME:
+			selnum, scrollpos = 0, 0
+
+		elif kinp == curses.KEY_END:
+			selnum = len(cdir) - 1
+			scrollpos = selnum - (scrnY-4) if selnum+2 > scrnY else 0
+
 
 		try:
 		#Wrap navigating Directories in 'try' because you may not be allowed in some places. More likely on Posix based systems.
@@ -202,7 +210,8 @@ def main(stdscr):
 				try:
 					#The following used to be the most CPU intensive line once. Then I learnt about inline conditions.
 					selnum = sorted(os.listdir('..')).index(os.path.basename(os.getcwd()))
-					scrollpos = abs(scrnY - selnum)+6 if selnum+2 > scrnY else 0 #Adjust scroll position based on selector position and screen size
+					#scrollpos = abs(scrnY - selnum)+6 if selnum+2 > scrnY else 0 #Adjust scroll position based on selector position and screen size
+					scrollpos = selnum - (scrnY-4) if selnum+2 > scrnY else 0 #Adjust scroll position based on selector position and screen size
 				except ValueError:
 					bottomtxt = "Cannot go beyond " + os.getcwd()
 				os.chdir('..')
@@ -214,33 +223,51 @@ def main(stdscr):
 
 
 		if kinp == ord('t'):
-			os.system(lblinp(stdscr, scrnY-2, 0, "$:"))
+			os.system(lblinp("$:"))
 		
-		if kinp == ord('~'):
+		elif kinp == ord('~'):
 			os.chdir(os.path.expanduser('~'))
 
-		if kinp == ord(' '):
+		elif kinp == ord(' '):
 			opt = popup(['Rename', 'Delete'], "File Operations")
-			if opt == '0':
-				lblinp(stdscr, )
+			if opt == 0:
+				os.rename(cdir[selnum], lblinp("Rename"))
+			elif opt == 1:
+				if popup(['No', 'Yes'], "Are you sure you want to delete {}?".format(cdir[selnum])):
+					operation.remove(cdir[selnum])
 
 
-		#Store items from current directory in a list and render them line-by-line.
-		try:
-			cdir = sorted(os.listdir('.'))
-			if cdir == []:
-				bottomtxt = "Directory Empty"
-		except:
-			cdir = []
-			bottomtxt = "Directory Inaccessible"
+
+		#Debug loggr. for use with watch
+		#open("/home/s/Documents/fm/log.txt", "w").write("scrnSIZE:"+ str(scrnY)+ str(scrnX)+ "\nselnum:"+ str(selnum)+ "\ncdir:"+ str(cdir)+ "\ncdir len:"+ str(len(cdir))+ "\nscrollpos:"+ str(scrollpos)+ "\nbottomtxt:"+ bottomtxt)
 
 
-		if kinp != -1 or f_ref > 0:
+		if kinp != -1 or bottomtxt in ["Working directory inaccessible. Moved to {}".format(os.getcwd()), "Welcome", "hidden refresh"]:
+			#Store items from current directory in a list and render them line-by-line.
+			try:
+				cdir = sorted(os.listdir(os.getcwd()))
+				if cdir == []:
+					bottomtxt = "Directory Empty"
+				if selnum >= len(cdir):
+					selnum = len(cdir) - 1
+					bottomtxt = "hidden refresh"
+					
+			except FileNotFoundError: 
+				while True:
+					try:
+						os.chdir("..")
+						if os.path.exists(os.getcwd()):
+							break
+					except FileNotFoundError:
+						continue
+				bottomtxt = "Working directory inaccessible. Moved to {}".format(os.getcwd())
+				continue
+
+			#Draw.
+			bottomtxt = '' if bottomtxt == "hidden refresh" else bottomtxt
 			stdscr.move(0, 0)
 			scrnY, scrnX = stdscr.getmaxyx()
-			perline(stdscr, cdir, selnum, scrollpos, dirs = True)
-			if f_ref != 0:
-				f_ref -= 1
+			perline(stdscr, cdir, selnum, scrollpos, subwin = False)
 			bottomtxt = ""
 		curses.napms(16) #'wait for _' in milliseconds
 
@@ -252,17 +279,11 @@ try:
 except KeyboardInterrupt:
 	print("Ctrl+C pressed.")
 finally:
-	if os.name == 'posix':
-		os.system('clear')
-	elif os.name == 'nt':
-		os.system('cls')
-	print("Goodbye!")
+	print("Goodbye!")	
 
 exit()
 
 
 
-'''To do:
-Move input logic to its own function. Update: No. Not doing that. Modularity will fuck up adaptability.
-Add more controls (force refresh 'r'), (force 60Frame cycle 'R'), (move to end 'N'), (move to beginning 'J')
-Fix: lplinp (its a mess. make it more rigid but easier to use)'''
+#To do:
+#Fix: lplinp (its a mess. make it more rigid but easier to use)
